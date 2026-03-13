@@ -65,8 +65,6 @@ def info(url: str) -> JSONResponse:
 def download(body: Dict[str, str], background: BackgroundTasks) -> JSONResponse:
     url = body.get("url", "")
     quality = body.get("quality", "720p")
-    ext = "mp3" if quality == "mp3" else "mp4"
-    filename = f"{sanitize_filename(info['title'])}.{ext}"
     if not url:
         raise HTTPException(status_code=400, detail="URL inválida.")
     try:
@@ -79,7 +77,8 @@ def download(body: Dict[str, str], background: BackgroundTasks) -> JSONResponse:
         raise HTTPException(status_code=500, detail=f"Error al analizar: {exc}") from exc
 
     job_id = str(uuid4())
-    filename = f"{sanitize_filename(info['title'])}.mp4"
+    ext = "mp3" if quality == "mp3" else "mp4"
+    filename = f"{sanitize_filename(info['title'])}.{ext}"
     init_progress(job_id, filename)
     set_filename(job_id, filename)
 
@@ -95,6 +94,7 @@ def download(body: Dict[str, str], background: BackgroundTasks) -> JSONResponse:
 
     background.add_task(run_download)
     return JSONResponse(status_code=202, content={"job_id": job_id, "filename": filename})
+
 
 
 @app.get("/progress/{job_id}")
