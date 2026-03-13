@@ -75,12 +75,13 @@ def get_video_info(url: str) -> Dict:
     domain = validate_url(url)
     platform = _platform_from_domain(domain)
     ydl_opts = {
-    "skip_download": True,
-    "quiet": True,
-    "no_warnings": True,
-    "noplaylist": True,
-    "format": "best",
-}
+        "skip_download": True,
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "format": "best",
+        "cookiefile": os.getenv("COOKIES_PATH"),
+    }
 
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -124,6 +125,7 @@ def download_video(url: str, quality: str, job_id: str) -> str:
         "no_warnings": True,
         "progress_hooks": [progress_hook],
         "ffmpeg_location": os.getenv("FFMPEG_PATH", "/usr/bin/ffmpeg"),
+        "cookiefile": os.getenv("COOKIES_PATH"),
     }
 
     with YoutubeDL(ydl_opts) as ydl:

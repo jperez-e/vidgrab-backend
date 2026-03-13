@@ -10,6 +10,10 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 from downloader import get_video_info, download_video, sanitize_filename, validate_url
 from progress import (
