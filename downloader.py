@@ -74,7 +74,14 @@ def sanitize_filename(name: str) -> str:
 def get_video_info(url: str) -> Dict:
     domain = validate_url(url)
     platform = _platform_from_domain(domain)
-    ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True}
+    ydl_opts = {
+    "skip_download": True,
+    "quiet": True,
+    "no_warnings": True,
+    "noplaylist": True,
+    "format": "best",
+}
+
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
     formats = info.get("formats", [])
