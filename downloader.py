@@ -12,16 +12,14 @@ from yt_dlp import YoutubeDL
 from progress import update_progress
 
 SUPPORTED_DOMAINS = [
-    "youtube.com",
-    "youtu.be",
     "tiktok.com",
     "instagram.com",
     "twitter.com",
     "x.com",
     "facebook.com",
     "fb.watch",
-    "twitch.tv",
     "threads.net",
+    "threads.com",
 ]
 
 QUALITY_MAP = {
@@ -42,8 +40,6 @@ def _domain_from_url(url: str) -> str:
 
 
 def _platform_from_domain(domain: str) -> str:
-    if "youtube" in domain or "youtu.be" in domain:
-        return "YouTube"
     if "tiktok" in domain:
         return "TikTok"
     if "instagram" in domain:
@@ -52,8 +48,6 @@ def _platform_from_domain(domain: str) -> str:
         return "Twitter / X"
     if "facebook" in domain or "fb.watch" in domain:
         return "Facebook"
-    if "twitch" in domain:
-        return "Twitch"
     if "threads" in domain:
         return "Threads"
     return "Desconocido"
@@ -84,6 +78,15 @@ def _get_cookiefile() -> str | None:
         return cookie_path
 
 
+def _pick_thumbnail(info: Dict) -> str:
+    thumbnails = info.get("thumbnails") or []
+    if thumbnails:
+        for item in reversed(thumbnails):
+            if item.get("url"):
+                return item["url"]
+    return info.get("thumbnail") or ""
+
+
 def get_video_info(url: str) -> Dict:
     domain = validate_url(url)
     platform = _platform_from_domain(domain)
@@ -108,7 +111,7 @@ def get_video_info(url: str) -> Dict:
         available = [f"{fallback}p"]
     return {
         "title": info.get("title") or "Video",
-        "thumbnail": info.get("thumbnail") or "",
+        "thumbnail": _pick_thumbnail(info),
         "duration": int(info.get("duration") or 0),
         "platform": platform,
         "formats": available or ["360p"],
@@ -116,7 +119,6 @@ def get_video_info(url: str) -> Dict:
 
 
 def download_video(url: str, quality: str, job_id: str) -> str:
-    format_string = QUALITY_MAP.get(quality, QUALITY_MAP["720p"])
     output_dir = tempfile.gettempdir()
     output_template = os.path.join(output_dir, f"{job_id}.%(ext)s")
 
@@ -130,21 +132,37 @@ def download_video(url: str, quality: str, job_id: str) -> str:
         elif status == "finished":
             update_progress(job_id, 98.0, "Procesando con ffmpeg...")
 
-    ydl_opts = {
-        "format": format_string,
-        "outtmpl": output_template,
-        "merge_output_format": "mp4",
-        "quiet": True,
-        "no_warnings": True,
-        "progress_hooks": [progress_hook],
-        "ffmpeg_location": os.getenv("FFMPEG_PATH", "/usr/bin/ffmpeg"),
-        "cookiefile": _get_cookiefile(),
-    }
+    if quality == "mp3":
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": output_template,
+            "quiet": True,
+            "no_warnings": True,
+            "progress_hooks": [progress_hook],
+            "ffmpeg_location": os.getenv("FFMPEG_PATH", "/usr/bin/ffmpeg"),
+            "cookiefile": _get_cookiefile(),
+            "postprocessors": [
+                {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}
+            ],
+        }
+    else:
+        format_string = QUALITY_MAP.get(quality, QUALITY_MAP["720p"])
+        ydl_opts = {
+            "format": format_string,
+            "outtmpl": output_template,
+            "merge_output_format": "mp4",
+            "quiet": True,
+            "no_warnings": True,
+            "progress_hooks": [progress_hook],
+            "ffmpeg_location": os.getenv("FFMPEG_PATH", "/usr/bin/ffmpeg"),
+            "cookiefile": _get_cookiefile(),
+        }
 
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
-    final_path = os.path.join(output_dir, f"{job_id}.mp4")
+    final_ext = "mp3" if quality == "mp3" else "mp4"
+    final_path = os.path.join(output_dir, f"{job_id}.{final_ext}")
     if not os.path.exists(final_path):
         raise FileNotFoundError("Archivo final no encontrado.")
     return final_path

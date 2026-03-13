@@ -65,6 +65,8 @@ def info(url: str) -> JSONResponse:
 def download(body: Dict[str, str], background: BackgroundTasks) -> JSONResponse:
     url = body.get("url", "")
     quality = body.get("quality", "720p")
+    ext = "mp3" if quality == "mp3" else "mp4"
+    filename = f"{sanitize_filename(info['title'])}.{ext}"
     if not url:
         raise HTTPException(status_code=400, detail="URL inválida.")
     try:
@@ -124,6 +126,7 @@ def file(job_id: str, background: BackgroundTasks) -> FileResponse:
 
     progress_data = get_progress(job_id)
     filename = progress_data.get("filename", "video.mp4")
+    media_type = "audio/mpeg" if filename.endswith(".mp3") else "video/mp4"
 
     def cleanup() -> None:
         if os.path.exists(path):
@@ -132,7 +135,8 @@ def file(job_id: str, background: BackgroundTasks) -> FileResponse:
         remove_progress(job_id)
 
     background.add_task(cleanup)
-    return FileResponse(path, filename=filename, media_type="video/mp4")
+    return FileResponse(path, filename=filename, media_type=media_type)
+
 
 
 async def asyncio_sleep(seconds: float) -> None:
